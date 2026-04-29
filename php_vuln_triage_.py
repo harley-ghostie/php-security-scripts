@@ -3,8 +3,8 @@ import requests
 import re
 import sys
 
-BASE = "http://www.alvo.com.br/phpinfo.php"
-UPLOAD_FORM = "http://www.alvo.com.br/upload.php"  # ajustar se outro endpoint
+BASE = "https://exemplo.com/app/phpinfo.php"
+UPLOAD_FORM = "https://exemplo.com/app/upload.php"  # ajustar se outro endpoint
 
 def get_tmp_path():
     resp = requests.get(BASE)
