@@ -1,123 +1,313 @@
-# PHP Exploitation PoCs
+# PHP Security PoCs
 
-Repositório com scripts de apoio para validação controlada de vulnerabilidades comuns em aplicações PHP.
+Repositório com scripts para reconhecimento, triagem e validação controlada de vulnerabilidades em aplicações PHP.
 
-Os scripts têm como objetivo auxiliar atividades autorizadas de segurança ofensiva, pentest, análise técnica e demonstração de risco em ambientes controlados.
+Os scripts foram separados por nível de profundidade, começando por reconhecimento básico até validações mais avançadas de cadeia de exploração.
 
-## Visão geral
+---
 
-Este repositório contém três scripts com níveis diferentes de profundidade:
+## Visão geral dos scripts
 
-| Script | Finalidade | Nível |
+| Script | Objetivo | Quando usar |
 |---|---|---|
-| `exploit_php.py` | Triagem inicial de falhas comuns em PHP | Básico |
-| `exploit_php2.py` | Validação de cadeia envolvendo `phpinfo()`, upload e LFI | Intermediário |
-| `exploit_php3.py` | PoC avançada com tentativa de exploração encadeada e pós-exploração | Avançado |
+| `php_recon_scanner.py` | Reconhecimento inicial de exposição PHP | Usar no começo da análise para mapear arquivos sensíveis, headers, backups, erros e possíveis sinais de LFI/RFI. |
+| `php_scanner_LFI.py` | Validação básica de LFI, deserialização e `phpinfo()` | Usar após o reconhecimento, quando houver suspeita de parâmetros vulneráveis ou páginas de debug expostas. |
+| `php_vuln_triage.py` | Validação de cadeia com `phpinfo()`, upload e possível LFI | Usar quando já existe indício de `phpinfo()` exposto e algum endpoint de upload conhecido. |
+| `php_poc_lfi_rce.py` | PoC avançada de cadeia LFI para possível RCE | Usar somente em ambiente autorizado, controlado ou laboratório, quando for necessário demonstrar impacto técnico mais alto. |
 
-## Resumo dos scripts
+---
 
-### `exploit_php.py`
+# Fluxo recomendado de uso
 
-O `exploit_php.py` realiza uma validação inicial de vulnerabilidades comuns em aplicações PHP. Ele testa indícios de Local File Inclusion (LFI), deserialização insegura e exposição de páginas de debug com `phpinfo()`.
+A ordem mais lógica para utilização dos scripts é:
 
-Esse script é indicado para triagem inicial, quando o objetivo é verificar rapidamente se existem sinais básicos de falhas PHP no ambiente analisado.
+```text
+1. php_recon_scanner.py
+   ↓
+2. php_scanner_LFI.py
+   ↓
+3. php_vuln_triage.py
+   ↓
+4. php_poc_lfi_rce.py
+```
 
-### `exploit_php2.py`
+## Explicação rápida do fluxo
 
-O `exploit_php2.py` valida uma cadeia específica envolvendo exposição de `phpinfo()`, upload de arquivo e possível inclusão local de arquivo (LFI).
-
-Esse script é indicado quando já existe suspeita de `phpinfo()` exposto e algum endpoint de upload conhecido. Ele ajuda a verificar se essas condições podem ser combinadas para uma exploração mais relevante.
-
-### `exploit_php3.py`
-
-O `exploit_php3.py` automatiza uma cadeia mais avançada de exploração. Ele tenta identificar o diretório temporário do PHP, testar endpoints e campos de upload, validar LFI e executar funções adicionais relacionadas à pós-exploração.
-
-Esse script deve ser usado somente em laboratório, CTF ou pentest formal com escopo explícito, pois contém funcionalidades com potencial de alto impacto.
+Primeiro, use o `php_recon_scanner.py` para identificar possíveis exposições e pontos de interesse. Depois, use o `php_scanner_LFI.py` para validar indícios básicos de vulnerabilidade. Caso existam sinais de `phpinfo()` exposto, upload acessível e possível LFI, avance para o `php_vuln_triage.py`. O `php_poc_lfi_rce.py` deve ser usado apenas em cenários controlados, pois possui funcionalidades com potencial de impacto maior.
 
 ---
 
 # Scripts
 
-## exploit_php.py
+## php_recon_scanner.py
 
 ### Descrição
 
-O `exploit_php.py` é um script de triagem inicial para identificar possíveis vulnerabilidades comuns em aplicações PHP.
-
-Ele realiza testes básicos para verificar indícios de:
-
-- Local File Inclusion (LFI);
-- deserialização insegura em PHP;
-- exposição de páginas de debug com `phpinfo()`.
+O `php_recon_scanner.py` é um scanner de reconhecimento para aplicações PHP. Ele realiza uma análise inicial em busca de exposições comuns, arquivos sensíveis, páginas de debug, arquivos de backup, mensagens de erro e possíveis indícios de LFI/RFI.
 
 ### O que o script faz
 
-- Testa parâmetros comuns em busca de possível LFI;
-- Envia payloads básicos para verificar indícios de deserialização insegura;
-- Procura páginas comuns como `phpinfo.php`, `info.php` e `test.php`;
-- Exibe no terminal os resultados encontrados.
+- Verifica headers HTTP em busca de indícios de PHP;
+- Procura arquivos e paths sensíveis;
+- Testa páginas como `phpinfo.php`, `info.php` e `test.php`;
+- Verifica exposição de `.env`, `.git/config`, `config.php`, `wp-config.php` e arquivos similares;
+- Testa existência de arquivos de backup e dumps;
+- Busca mensagens de erro PHP;
+- Testa payloads básicos de LFI/RFI no parâmetro `file`;
+- Verifica diretórios comuns como `admin/`, `uploads/`, `backup/`, `logs/` e `phpmyadmin/`.
 
 ### Cenário de uso
 
-Este script é indicado para uma primeira análise técnica, quando ainda não há confirmação da vulnerabilidade e o objetivo é apenas identificar sinais iniciais de exposição ou comportamento inseguro.
+Use este script no início da análise, quando ainda não há uma vulnerabilidade confirmada. Ele serve para mapear rapidamente a superfície da aplicação PHP e indicar quais pontos merecem validação manual ou testes mais específicos.
 
-Ele deve ser usado como etapa de reconhecimento e validação preliminar, não como prova definitiva de exploração.
+### Como usar
 
+```bash
+python3 php_recon_scanner.py --url https://exemplo.com/
+```
+
+### Quando usar cada formato
+
+Use https://exemplo.com/ quando a aplicação PHP estiver na raiz do domínio. 
+Use `https://exemplo.com/app/`  quando a aplicação estiver dentro de um diretório específico.
+
+```bash
+python3 php_recon_scanner.py --url https://exemplo.com/
+```
+
+Observação
+
+Não coloque uma página específica como `phpinfo.php` ou `index.php` nesse script. Ele precisa de uma base para testar vários caminhos, como:
+```bash
+phpinfo.php
+.env
+.git/config
+config.php
+wp-config.php
+backup.zip
+admin/
+uploads/
+```
 ---
 
-## exploit_php2.py
+## php_scanner_LFI.py
 
 ### Descrição
 
-O `exploit_php2.py` é uma Prova de Conceito para validação de uma possível cadeia de exploração envolvendo exposição de `phpinfo()`, upload de arquivo e inclusão local de arquivo.
-
-O script tenta identificar o caminho temporário utilizado pelo PHP, enviar um arquivo disfarçado como imagem e acionar esse arquivo por meio de um possível parâmetro vulnerável.
+O `php_scanner_LFI.py` realiza testes básicos para identificar possíveis vulnerabilidades comuns em aplicações PHP, com foco em LFI, deserialização insegura e exposição de páginas `phpinfo()`.
 
 ### O que o script faz
 
-- Acessa uma página `phpinfo.php` exposta;
-- Tenta identificar o caminho temporário de upload do PHP;
-- Realiza upload de um arquivo de teste disfarçado como imagem;
-- Tenta acionar o arquivo enviado por meio de LFI;
-- Exibe o resultado da tentativa no terminal.
+- Testa parâmetros comuns como `page`, `file`, `inc`, `include` e `template`;
+- Envia payloads básicos para identificar possível Local File Inclusion;
+- Testa payload simples de deserialização PHP;
+- Procura páginas de debug como `phpinfo.php`, `info.php` e `test.php`;
+- Exibe no terminal os achados identificados.
 
 ### Cenário de uso
 
-Este script é indicado quando já existe suspeita ou confirmação de que a aplicação possui:
+Use este script após a etapa de reconhecimento, principalmente quando houver suspeita de parâmetros vulneráveis ou páginas de debug expostas. Ele funciona como uma triagem técnica para confirmar indícios antes de uma validação mais profunda.
 
-- página `phpinfo()` exposta;
-- funcionalidade de upload acessível;
-- possível parâmetro vulnerável a LFI.
+### Como usar
 
-Ele deve ser usado para validar se essas condições podem ser combinadas em uma cadeia real de exploração.
+Antes de executar, ajuste a variável `TARGET` no início do script:
+
+```python
+TARGET = "https://exemplo.com/index.php"
+```
+```python
+TARGET = "https://exemplo.com/app/page.php"
+```
+### Cenário ideal
+Use uma rota ou endpoint da aplicação que aceite parâmetros via GET.
+
+Esse script testa parâmetros como:
+```bash
+?page=
+?file=
+?inc=
+?include=
+?template=
+```
+Então o melhor alvo é uma rota onde faria sentido existir carregamento dinâmico de páginas, templates ou arquivos.
+
+Exemplo do teste gerado:
+```bash
+https://exemplo.com/index.php?file=../../../../etc/passwd
+```
+### Execução:
+
+```bash
+python3 php_scanner_LFI.py
+```
 
 ---
 
-## exploit_php3.py
+## php_vuln_triage.py
 
 ### Descrição
 
-O `exploit_php3.py` é uma PoC avançada para validação de cadeia ofensiva em aplicações PHP.
+O `php_vuln_triage.py` é uma PoC para validação de uma possível cadeia envolvendo exposição de `phpinfo()`, upload de arquivo e inclusão local de arquivo.
 
-Ele tenta automatizar múltiplas etapas, incluindo identificação do diretório temporário do PHP, fuzzing de endpoints de upload, teste de campos de upload, tentativa de LFI e validações adicionais de pós-exploração.
+O script tenta identificar o caminho temporário do PHP, enviar um arquivo disfarçado como imagem e acionar esse arquivo por meio de um possível parâmetro vulnerável.
 
 ### O que o script faz
 
 - Acessa uma página `phpinfo.php`;
-- Tenta identificar o diretório temporário de upload;
+- Tenta identificar o caminho temporário utilizado pelo PHP;
+- Envia um arquivo de teste disfarçado como imagem GIF;
+- Tenta acionar o arquivo enviado por meio de possível LFI;
+- Exibe no terminal o resultado da tentativa.
+
+### Cenário de uso
+
+Use este script quando já existir uma suspeita mais concreta de cadeia explorável, especialmente quando houver:
+
+- página `phpinfo()` exposta;
+- endpoint de upload conhecido;
+- suspeita de LFI;
+- necessidade de validar se as falhas podem ser combinadas.
+
+### Compatibilidade com sistemas servidores
+
+Este script não é exclusivo para Windows. Na versão atual, ele está mais compatível com servidores Linux/Unix, pois procura caminhos temporários no formato `/tmp`.
+
+Em servidores Windows, o script pode precisar de ajuste nos padrões de busca do diretório temporário, pois os caminhos costumam seguir formatos como:
+
+```text
+C:\Windows\Temp
+C:\xampp\tmp
+C:\wamp64\tmp
+```
+
+Resumo prático:
+
+| Sistema | Compatibilidade |
+|---|---|
+| Linux/Unix | Maior compatibilidade no formato atual |
+| Windows | Pode exigir ajuste nos caminhos e regex |
+| XAMPP/WAMP | Pode exigir ajuste no caminho temporário e endpoint de upload |
+
+### Como usar
+
+Antes de executar, ajuste as variáveis no início do script:
+
+```python
+BASE = "https://exemplo.com/phpinfo.php"
+BASE = "https://exemplo.com/app/phpinfo.php"
+UPLOAD_FORM = "http://www.site.com.br/app/upload.php"
+```
+
+### Path ideal para `UPLOAD_FORM`
+
+O `UPLOAD_FORM` deve apontar diretamente para o endpoint responsável pelo upload de arquivos.
+
+Exemplos:
+```python
+UPLOAD_FORM = "https://exemplo.com/upload.php"
+UPLOAD_FORM = "https://exemplo.com/app/upload.php"
+```
+
+### Execução:
+
+```bash
+python3 php_vuln_triage.py
+```
+
+---
+
+## php_poc_lfi_rce.py
+
+### Descrição
+
+O `php_poc_lfi_rce.py` é uma PoC avançada para validação de uma cadeia de exploração em aplicações PHP. Ele tenta combinar exposição de `phpinfo()`, upload inseguro, LFI e possível execução de comandos.
+
+Este script deve ser tratado como uma validação de alto impacto.
+
+### O que o script faz
+
+- Acessa uma página `phpinfo.php`;
+- Tenta identificar o diretório temporário de upload do PHP;
 - Testa múltiplos endpoints comuns de upload;
 - Testa diferentes nomes de campos de upload;
 - Envia arquivo de teste disfarçado como imagem;
 - Tenta acionar o arquivo por meio de parâmetros comuns de LFI;
-- Possui funções adicionais relacionadas à pós-exploração.
+- Possui funções adicionais relacionadas a pós-exploração.
 
 ### Cenário de uso
 
-Este script deve ser utilizado somente em ambientes controlados, laboratórios, CTFs ou testes formais com autorização explícita.
+Use este script somente em ambiente autorizado, laboratório, CTF ou teste formal de segurança com escopo explícito.
 
-Por conter funcionalidades com potencial de alto impacto, ele não é recomendado para triagem simples nem para execução direta em ambientes produtivos sem validação prévia do escopo e dos riscos.
+Ele é indicado quando já existe uma hipótese técnica forte de que a aplicação pode permitir uma cadeia de exploração mais severa, como LFI levando a execução de comandos.
 
-Antes de usar em um teste real, recomenda-se revisar o código e desabilitar qualquer função que não seja necessária para a comprovação técnica acordada.
+Use esse script quando você quer validar uma cadeia mais avançada e já existe suspeita de:
+
+```python
+phpinfo() exposto
+upload acessível
+possível LFI
+possível execução de comando
+```
+
+
+Não é recomendado usar este script como primeira etapa de análise.
+
+### Compatibilidade com sistemas servidores
+
+O script foi escrito com foco maior em ambientes Linux/Unix, principalmente por utilizar caminhos e comandos comuns desse tipo de sistema.
+
+Algumas partes podem não funcionar corretamente em servidores Windows sem adaptação, especialmente funções relacionadas a comandos do sistema, caminhos de arquivos e shell reverso.
+
+Resumo prático:
+
+| Sistema | Compatibilidade |
+|---|---|
+| Linux/Unix | Compatibilidade maior |
+| Windows | Requer adaptação de caminhos e comandos |
+| Servidores Apache/Nginx com PHP-FPM | Pode ser aplicável, dependendo da configuração |
+| XAMPP/WAMP | Pode exigir ajustes nos diretórios e endpoints |
+
+### Como usar
+
+Antes de executar, ajuste as variáveis no início do script:
+
+```python
+BASE = "http://www.site.com.br/app/"
+ATTACKER_IP = "SEU_IP_AUTORIZADO"
+ATTACKER_PORT = 4444
+```
+
+### Path ideal
+
+Use a URL base do diretório onde estão os recursos da aplicação PHP, com barra no final.
+Exemplos:
+```python
+BASE = "https://exemplo.com/"
+BASE = "https://exemplo.com/app/"
+```
+
+### Por que precisa ser a base?
+
+Porque o script monta automaticamente caminhos como:
+```python
+PHPINFO_URL = urljoin(BASE, "phpinfo.php")
+```
+
+E também testa endpoints como:
+```python
+upload.php
+enviar.php
+submit.php
+upload_image.php
+```
+
+### 
+
+Depois execute:
+
+```bash
+python3 php_poc_lfi_rce.py
+```
 
 ---
 
@@ -125,7 +315,7 @@ Antes de usar em um teste real, recomenda-se revisar o código e desabilitar qua
 
 Os scripts requerem Python 3.
 
-Dependência principal:
+Instale a dependência principal:
 
 ```bash
 pip install requests
@@ -133,55 +323,21 @@ pip install requests
 
 ---
 
-# Como usar
+# Observações importantes
 
-Antes de executar qualquer script, ajuste as variáveis de alvo no início do arquivo correspondente.
+Os scripts possuem finalidades diferentes e não devem ser executados todos de forma automática sem análise prévia.
 
-Exemplo:
+O `php_recon_scanner.py` e o `php_scanner_LFI.py` são mais indicados para triagem e reconhecimento. Já o `php_vuln_triage.py` e o `php_poc_lfi_rce.py` devem ser usados com mais cautela, pois tentam validar cadeias de exploração com impacto potencial maior.
 
-```python
-TARGET = "http://www.site.com.br/math/avaliacao"
-```
-
-ou:
-
-```python
-BASE = "http://www.site.com.br/math/avaliacao/"
-```
-
-Depois, execute o script desejado:
-
-```bash
-python3 exploit_php.py
-```
-
-```bash
-python3 exploit_php2.py
-```
-
-```bash
-python3 exploit_php3.py
-```
-
----
-
-# Estrutura sugerida
-
-```text
-php-exploitation-pocs/
-├── exploit_php.py
-├── exploit_php2.py
-├── exploit_php3.py
-└── README.md
-```
+Os resultados devem sempre ser revisados manualmente. Respostas customizadas, WAF, páginas de erro, redirecionamentos, autenticação, diferenças entre Linux e Windows e configurações específicas do servidor podem gerar falsos positivos ou falsos negativos.
 
 ---
 
 # Recomendações de mitigação
 
-Para reduzir o risco das falhas validadas por estes scripts, recomenda-se remover páginas `phpinfo()` de ambientes produtivos, restringir endpoints administrativos, validar corretamente arquivos enviados por upload, bloquear extensões executáveis, armazenar uploads fora do webroot, desabilitar execução de scripts em diretórios de upload, corrigir pontos de LFI e revisar o uso de deserialização em PHP.
+Para reduzir os riscos validados por estes scripts, recomenda-se remover páginas `phpinfo()` de ambientes produtivos, restringir endpoints administrativos, validar corretamente arquivos enviados por upload, bloquear extensões executáveis, armazenar uploads fora do webroot, desabilitar execução de scripts em diretórios de upload, corrigir pontos de LFI e revisar o uso de deserialização em PHP.
 
-Também é recomendado revisar permissões de arquivos, segredos expostos, configurações do servidor web e logs de acesso para identificar possíveis tentativas de exploração.
+Também é recomendado revisar permissões de arquivos, configurações do servidor web, exposição de arquivos sensíveis, diretórios públicos, backups acessíveis e logs de acesso para identificar possíveis tentativas de exploração.
 
 ---
 
@@ -191,7 +347,7 @@ Estes scripts devem ser utilizados apenas em ambientes autorizados.
 
 Alguns testes podem acessar arquivos sensíveis, validar execução de código ou demonstrar cadeias de exploração com impacto real. Portanto, o uso deve estar alinhado ao escopo formal do teste e às regras de engajamento acordadas.
 
-Os resultados devem ser analisados manualmente antes de qualquer conclusão, pois respostas customizadas, WAF, páginas de erro e diferenças de configuração podem gerar falsos positivos ou falsos negativos.
+Antes de qualquer execução em ambiente produtivo, revise o código, entenda o impacto de cada função e remova qualquer ação que não seja necessária para a validação acordada.
 
 ---
 
