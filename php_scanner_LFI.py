@@ -1,7 +1,7 @@
 import requests
 import urllib.parse
 
-TARGET = "http://www.alvo.com.br/caminho/"  # <--- Substituir pelo alvo real
+TARGET = "https://exemplo.com/app/index.php"  # <--- Substituir pelo alvo real
 
 def test_lfi():
     print("[*] Testando LFI em parâmetros comuns...")
